@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>Triggers the generation of the JSON Schema of the Pocos, in the wire format of the Poco JSON exchange.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CK.Poco.Exc.Json" Version="36.0.0-0.cris-auth.1.ci.45" />
+  </ItemGroup>
+</Project>

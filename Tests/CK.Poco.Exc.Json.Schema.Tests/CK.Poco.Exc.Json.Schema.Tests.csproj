@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CK.Testing.StObjEngine" Version="36.0.0-0.cris-auth.1.ci.45" />
+    <PackageReference Include="CK.Testing.Nunit" Version="18.0.0-0.cris-auth.0.ci.8" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="6.3.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\CK.Poco.Exc.Json.Schema.Engine\CK.Poco.Exc.Json.Schema.Engine.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="%24StObjGen\" />
+  </ItemGroup>
+</Project>

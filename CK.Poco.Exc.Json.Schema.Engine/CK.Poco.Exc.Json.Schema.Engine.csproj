@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>CK.Setup.PocoJsonSchema</RootNamespace>
+    <Description>Generates the JSON Schema of the Pocos, in the wire format of the Poco JSON exchange.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CK.Poco.Exc.Json.Engine" Version="36.0.0-0.cris-auth.1.ci.45" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CK.Poco.Exc.Json.Schema\CK.Poco.Exc.Json.Schema.csproj" />
+  </ItemGroup>
+</Project>

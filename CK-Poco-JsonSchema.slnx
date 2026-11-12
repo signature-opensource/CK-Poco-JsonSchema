@@ -1,2 +1,13 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="nuget.config" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/CK.Poco.Exc.Json.Schema.Tests/CK.Poco.Exc.Json.Schema.Tests.csproj" />
+  </Folder>
+  <Project Path="CK.Poco.Exc.Json.Schema.Engine/CK.Poco.Exc.Json.Schema.Engine.csproj" />
+  <Project Path="CK.Poco.Exc.Json.Schema/CK.Poco.Exc.Json.Schema.csproj" />
 </Solution>
