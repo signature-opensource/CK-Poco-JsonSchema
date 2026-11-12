@@ -126,4 +126,54 @@ public class SchemaTests
         exported.Select( kv => kv.Key ).ShouldBe( required );
         defs["Sample"]!["properties"]!.AsObject().Select( kv => kv.Key ).ShouldBe( required );
     }
+
+    [Test]
+    public async Task the_export_validates_against_the_schema_Async()
+    {
+        var (_, auto) = await RunAsync();
+        await using var _ = auto;
+        var validator = SchemaValidator.Of( "Sample" );
+        var factory = auto.Services.GetRequiredService<IPocoFactory<ISample>>();
+        var empty = factory.Create();
+        validator.ShouldAccept( empty.ToString( PocoJsonExportOptions.Default ) );
+        var full = factory.Create( s =>
+        {
+            s.Name = "Full";
+            s.Count = 3712;
+            s.Big = long.MinValue;
+            s.Tags.Add( "a" );
+            s.Map.Add( "one", 1 );
+            s.ByKey.Add( 2, "two" );
+            s.Pair = (42, null);
+            s.Color = Color.Green;
+            s.Value = BigValue.Large;
+            s.Location = new Point( -1, 1 );
+            s.Other = auto.Services.GetRequiredService<IPocoFactory<IOther>>().Create();
+            s.Data = [1, 2, 3, 4, 5];
+            s.Anything = 3712;
+        } );
+        full.Other!.Back = full.Clone() is ISample c ? c : null;
+        validator.ShouldAccept( full.ToString( PocoJsonExportOptions.Default ) );
+
+        // What the schema refuses (the canonical form only; the importer is more lenient on some).
+        var ok = JsonNode.Parse( empty.ToString( PocoJsonExportOptions.Default ) )!.AsObject();
+        Reject( o => o.Remove( "name" ) );
+        Reject( o => o["unknown"] = 1 );
+        Reject( o => o["count"] = "x" );
+        Reject( o => o["count"] = 2147483648L );
+        Reject( o => o["big"] = 3 );
+        Reject( o => o["big"] = "9223372036854775808" );
+        Reject( o => o["color"] = 3 );
+        Reject( o => o["pair"] = JsonNode.Parse( "[1]" ) );
+        Reject( o => o["data"] = "abc" );
+        Reject( o => o["anything"] = 3 );
+        Reject( o => o["anything"] = JsonNode.Parse( """["unknown",3]""" ) );
+
+        void Reject( System.Action<JsonObject> change )
+        {
+            var o = ok.DeepClone().AsObject();
+            change( o );
+            validator.ShouldReject( o.ToJsonString() );
+        }
+    }
 }

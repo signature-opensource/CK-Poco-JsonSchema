@@ -8,6 +8,8 @@
     <PackageReference Include="CK.Testing.Nunit" Version="18.0.0-0.cris-auth.0.ci.8" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="6.3.1" />
+    <!-- Validates the exported JSON against the generated schemas (JSON Schema draft 2020-12). -->
+    <PackageReference Include="JsonSchema.Net" Version="9.5.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\CK.Poco.Exc.Json.Schema.Engine\CK.Poco.Exc.Json.Schema.Engine.csproj" />

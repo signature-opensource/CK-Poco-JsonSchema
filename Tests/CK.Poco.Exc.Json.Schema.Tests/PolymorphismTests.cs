@@ -116,6 +116,31 @@ public class PolymorphismTests
             foreach( var s in exported["shapes"]!.AsArray() ) TagNames( defs[_shape]! ).ShouldContain( s![0]!.GetValue<string>() );
             TagNames( defs["object"]! ).ShouldContain( exported["anything"]![0]!.GetValue<string>() );
             TagNames( defs["Holder"]!["properties"]!["culture"]!["anyOf"]![0]! ).ShouldContain( exported["culture"]![0]!.GetValue<string>() );
+            // And the validator accepts it.
+            SchemaValidator.Of( "Holder" ).ShouldAccept( exported.ToJsonString() );
         }
+    }
+
+    [Test]
+    public async Task the_validator_refuses_what_is_not_a_tagged_value_of_the_position_Async()
+    {
+        var (_, auto) = await RunAsync();
+        await using var _ = auto;
+        var shape = SchemaValidator.Of( "Holder", "shape" );
+        shape.ShouldAccept( """["Circle",{"size":0,"radius":1}]""" );
+        shape.ShouldAccept( "null" );
+        shape.ShouldReject( """{"size":0,"radius":1}""" );
+        shape.ShouldReject( """["Holder",{"shape":null,"anything":null,"shapes":[],"culture":null}]""" );
+        shape.ShouldReject( """["Circle",{"size":0}]""" );
+        shape.ShouldReject( """["Circle",{"size":0,"radius":1},3]""" );
+        var anything = SchemaValidator.Of( "Holder", "anything" );
+        anything.ShouldAccept( """["int",3]""" );
+        anything.ShouldAccept( """["L(CK.Poco.Exc.Json.Schema.Tests.PolymorphismTests.IShape?)",[null,["Square",{"size":1}]]]""" );
+        anything.ShouldReject( "3" );
+        anything.ShouldReject( """["int","3"]""" );
+        anything.ShouldReject( """["long","3"]""" );
+        var culture = SchemaValidator.Of( "Holder", "culture" );
+        culture.ShouldAccept( """["ExtendedCultureInfo","fr,en"]""" );
+        culture.ShouldReject( "\"fr\"" );
     }
 }

@@ -97,19 +97,25 @@ public class PatternTests
         void Check( string property, IEnumerable<string> candidates )
         {
             var field = JsonNamingPolicy.CamelCase.ConvertName( property );
+            // The JSON Schema validator, and .NET Regex: both must agree.
             var regex = new Regex( patterns[field], RegexOptions.CultureInvariant );
+            var validator = SchemaValidator.Of( "Basics", field );
             foreach( var c in candidates )
             {
-                if( !regex.IsMatch( c ) ) continue;
+                var json = JsonSerializer.Serialize( c );
+                // The serialization can change the string (a lone surrogate becomes U+FFFD): the decoded value is the candidate.
+                var value = JsonSerializer.Deserialize<string>( json )!;
+                validator.IsValid( json ).ShouldBe( regex.IsMatch( value ), $"The validator and Regex disagree on {json} for '{field}'." );
+                if( !regex.IsMatch( value ) ) continue;
                 ++matched;
-                var json = $$"""{"{{field}}":{{JsonSerializer.Serialize( c )}}}""";
+                var poco = $$"""{"{{field}}":{{json}}}""";
                 try
                 {
-                    factory.ReadJson( json );
+                    factory.ReadJson( poco );
                 }
                 catch( Exception )
                 {
-                    refused.Add( $"{field}: '{c}'" );
+                    refused.Add( $"{field}: {json}" );
                 }
             }
         }
