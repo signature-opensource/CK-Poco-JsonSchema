@@ -97,7 +97,9 @@ public class SchemaTests
         var p = defs["Sample"]!["properties"]!.AsObject();
         p["name"]!.ToJsonString().ShouldBe( """{"type":"string"}""" );
         p["count"]!.ToJsonString().ShouldBe( """{"type":["integer","null"],"minimum":-2147483648,"maximum":2147483647}""" );
-        p["big"]!.ToJsonString().ShouldBe( """{"type":"string","pattern":"^-?[0-9]{1,19}$"}""" );
+        // A string with a pattern (see PatternTests).
+        p["big"]!["type"]!.GetValue<string>().ShouldBe( "string" );
+        p["big"]!["pattern"].ShouldNotBeNull();
         p["tags"]!.ToJsonString().ShouldBe( """{"type":"array","items":{"type":"string"}}""" );
         p["map"]!.ToJsonString().ShouldBe( $$"""{"type":"object","additionalProperties":{{_int}}}""" );
         p["byKey"]!.ToJsonString()

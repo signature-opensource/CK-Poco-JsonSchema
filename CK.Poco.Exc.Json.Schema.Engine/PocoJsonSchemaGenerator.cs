@@ -17,8 +17,6 @@ namespace CK.Setup.PocoJsonSchema;
 /// </summary>
 sealed class PocoJsonSchemaGenerator
 {
-    const string _int64Pattern = "^-?[0-9]{1,19}$";
-
     readonly IPocoSerializationServiceEngine _serialization;
     readonly IPocoTypeSet _typeSet;
     readonly SortedDictionary<string, JsonObject> _defs;
@@ -246,16 +244,14 @@ sealed class PocoJsonSchemaGenerator
         // A float out of its range is refused by the importer (it would be an infinity).
         if( type == typeof( float ) ) return new JsonObject { ["type"] = "number", ["minimum"] = float.MinValue, ["maximum"] = float.MaxValue };
         // The 64-bit numbers are strings (a JavaScript number loses their precision).
-        if( type == typeof( long ) || type == typeof( TimeSpan ) ) return Pattern( _int64Pattern );
-        if( type == typeof( ulong ) ) return Pattern( "^[0-9]{1,20}$" );
-        if( type == typeof( decimal ) ) return Pattern( "^-?[0-9]+(\\.[0-9]+)?$" );
-        if( type == typeof( BigInteger ) ) return Pattern( "^-?[0-9]+$" );
-        if( type == typeof( Guid ) ) return Pattern( "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$" );
-        if( type == typeof( DateTime ) || type == typeof( DateTimeOffset ) )
-        {
-            return Pattern( "^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}(:[0-9]{2}(\\.[0-9]{1,16})?)?(Z|[+-][0-9]{2}:[0-9]{2})?)?$" );
-        }
-        if( type == typeof( char ) ) return new JsonObject { ["type"] = "string", ["minLength"] = 1, ["maxLength"] = 1 };
+        if( type == typeof( long ) || type == typeof( TimeSpan ) ) return Pattern( Patterns.Int64 );
+        if( type == typeof( ulong ) ) return Pattern( Patterns.UInt64 );
+        if( type == typeof( decimal ) ) return Pattern( Patterns.Decimal );
+        if( type == typeof( BigInteger ) ) return Pattern( Patterns.BigInteger );
+        if( type == typeof( Guid ) ) return Pattern( Patterns.Guid );
+        if( type == typeof( DateTime ) ) return Pattern( Patterns.DateTime );
+        if( type == typeof( DateTimeOffset ) ) return Pattern( Patterns.DateTimeOffset );
+        if( type == typeof( char ) ) return Pattern( Patterns.Char );
         if( type == typeof( NormalizedCultureInfo ) ) return Typed( "string" );
         return NotDescribed( $"the type '{GetName( t )}'" );
 

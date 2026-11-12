@@ -30,9 +30,16 @@ not by the schema), never more lenient.
   (`prefixItems`). A nullable type adds `null`.
 - **A field is present when its type is in the set:** the set plays the role of the runtime filter of the reader. In
   an anonymous record, a cell whose type is not in the set is `null` (its position is kept).
-- **The basic types:** the integers are `integer` with the range of their type; `long`, `ulong`, `decimal`,
-  `BigInteger` and the ticks of a `TimeSpan` are strings with a pattern; a `byte[]` is a base64 string; `Guid`,
-  `DateTime` and `DateTimeOffset` are strings with a pattern.
+- **The basic types:** the integers are `integer` with the range of their type, a `float` a `number` with its range;
+  `long`, `ulong`, `decimal`, `BigInteger`, the ticks of a `TimeSpan`, `Guid`, `DateTime`, `DateTimeOffset` and `char`
+  are strings with an exact pattern (`Patterns`): the ranges of the numbers, the calendar (the days of the months, the
+  leap years), one UTF-16 code unit for a `char`. They use only the common subset of the regular expression dialects.
+  A `byte[]` is a base64 string (its length checked).
+- **The ends of the calendar:** a `DateTime` with an offset is converted to the local time of the reader, and a
+  `DateTimeOffset` without offset takes the local offset of the reader: near `0001-01-01` and `9999-12-31` the result
+  depends on the time zone of the reader, and can be out of range. There, the patterns accept only the forms that are
+  safe in any time zone: for a `DateTime`, within two days, no offset or "Z"; for a `DateTimeOffset`, on the first and
+  the last day, a time with a zero offset. The tests check each pattern against the importer.
 - **Not described yet:** the polymorphic positions (`object`, the abstract Pocos, `ExtendedCultureInfo`) and the
   Globalization types (`UserMessage`, `SimpleUserMessage`, `FormattedString`, `MCString`, `CodeString`). Their schema
   validates nothing (`not: {}`, with a `$comment`): never more lenient than the importer.
