@@ -40,6 +40,13 @@ not by the schema), never more lenient.
   depends on the time zone of the reader, and can be out of range. There, the patterns accept only the forms that are
   safe in any time zone: for a `DateTime`, within two days, no offset or "Z"; for a `DateTimeOffset`, on the first and
   the last day, a time with a zero offset. The tests check each pattern against the importer.
-- **Not described yet:** the polymorphic positions (`object`, the abstract Pocos, `ExtendedCultureInfo`) and the
-  Globalization types (`UserMessage`, `SimpleUserMessage`, `FormattedString`, `MCString`, `CodeString`). Their schema
-  validates nothing (`not: {}`, with a `$comment`): never more lenient than the importer.
+- **The polymorphic positions** (`object`, an abstract Poco, `ExtendedCultureInfo`, an abstract read-only
+  collection) are written `["name", value]`, with the name of the final type of the value. Their schema is a `oneOf`
+  of the tagged values of the final types of the set that fit the position (`IPocoType.IsSubTypeOf`): a 2-cell
+  `array` whose first cell is the `const` name and the second the schema of the value. `object` (under its exchange
+  name, `object`) and the abstract Pocos are `$defs`; the other polymorphic positions are inlined. These are the names
+  that the importer reads after a tag (it also accepts the legacy names and a bare number, string or boolean in an
+  `object` position: the schema is stricter).
+- **Not described yet:** the Globalization types (`UserMessage`, `SimpleUserMessage`, `FormattedString`, `MCString`,
+  `CodeString`) and the union types. Their schema validates nothing (`not: {}`, with a `$comment`): never more lenient
+  than the importer. A polymorphic position has no alternative for them.

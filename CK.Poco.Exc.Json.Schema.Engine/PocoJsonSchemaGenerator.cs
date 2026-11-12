@@ -21,6 +21,7 @@ sealed class PocoJsonSchemaGenerator
     readonly IPocoTypeSet _typeSet;
     readonly SortedDictionary<string, JsonObject> _defs;
     readonly HashSet<IPocoType> _defined;
+    List<(string Name, IPocoType Type)>? _finalTypes;
     int _notDescribedCount;
 
     PocoJsonSchemaGenerator( IPocoSerializationServiceEngine serialization, IPocoTypeSet typeSet )
@@ -36,7 +37,7 @@ sealed class PocoJsonSchemaGenerator
         var g = new PocoJsonSchemaGenerator( serialization, typeSet );
         foreach( var t in typeSet.NonNullableTypes )
         {
-            if( t.Kind is PocoTypeKind.PrimaryPoco or PocoTypeKind.Record or PocoTypeKind.Enum )
+            if( t.Kind is PocoTypeKind.PrimaryPoco or PocoTypeKind.Record or PocoTypeKind.Enum or PocoTypeKind.AbstractPoco )
             {
                 g.EnsureDefinition( t );
             }
@@ -94,8 +95,61 @@ sealed class PocoJsonSchemaGenerator
                 FillEnum( def, e );
                 break;
             default:
-                Throw.NotSupportedException( t.Kind.ToString() );
+                Throw.DebugAssert( t.Kind is PocoTypeKind.AbstractPoco or PocoTypeKind.Any );
+                // An abstract Poco or "object": the tagged values of its final types.
+                var alternatives = TaggedAlternatives( t );
+                foreach( var (key, value) in alternatives.ToList() )
+                {
+                    alternatives.Remove( key );
+                    def[key] = value;
+                }
                 break;
+        }
+    }
+
+    // The final types of the set (the types that a GetType() can return), in name order: the type names that the
+    // importer reads after a tag (and accepts with the runtime filter).
+    List<(string Name, IPocoType Type)> FinalTypes => _finalTypes ??= _serialization.SerializableNames.SerializedObservableTypes
+                                                                        .Where( IsInSet )
+                                                                        .Select( t => (GetName( t ), t) )
+                                                                        .OrderBy( t => t.Item1, StringComparer.Ordinal )
+                                                                        .ToList();
+
+    /// <summary>
+    /// A polymorphic position is written <c>["name", value]</c> with the name of the final type of the value: one
+    /// alternative per final type of the set that is a subtype of the position's type.
+    /// </summary>
+    JsonObject TaggedAlternatives( IPocoType polymorphic )
+    {
+        var alternatives = new JsonArray();
+        foreach( var (name, t) in FinalTypes )
+        {
+            if( !t.IsSubTypeOf( polymorphic ) ) continue;
+            // The value of a final type. A basic final type can also be a polymorphic position (ExtendedCultureInfo):
+            // its value is its basic form.
+            var value = t.Kind == PocoTypeKind.Basic ? BasicSchema( t ) : Schema( t );
+            // A type not described yet can't be sent: no alternative for it.
+            if( value.ContainsKey( "not" ) ) continue;
+            alternatives.Add( new JsonObject
+            {
+                ["type"] = "array",
+                ["prefixItems"] = new JsonArray( new JsonObject { ["const"] = name }, value ),
+                ["minItems"] = 2,
+                ["items"] = false
+            } );
+        }
+        return alternatives.Count switch
+        {
+            0 => new JsonObject { ["$comment"] = $"No type of the set is a '{GetName( polymorphic )}'.", ["not"] = new JsonObject() },
+            1 => Detach( alternatives, 0 ),
+            _ => new JsonObject { ["oneOf"] = alternatives }
+        };
+
+        static JsonObject Detach( JsonArray a, int i )
+        {
+            var o = a[i]!.AsObject();
+            a.RemoveAt( i );
+            return o;
         }
     }
 
@@ -154,7 +208,14 @@ sealed class PocoJsonSchemaGenerator
 
     JsonObject NonNullableSchema( IPocoType t )
     {
-        if( t.IsPolymorphic ) return NotDescribed( $"the polymorphic type '{GetName( t )}'" );
+        if( t.IsPolymorphic )
+        {
+            // The named ones ("object" and the abstract Pocos) are defined once; the others are inlined
+            // (ExtendedCultureInfo, the abstract read-only collections).
+            if( t.Kind is PocoTypeKind.Any or PocoTypeKind.AbstractPoco ) return Ref( t );
+            if( t.Kind == PocoTypeKind.UnionType ) return NotDescribed( $"the union type '{GetName( t )}'" );
+            return TaggedAlternatives( t );
+        }
         switch( t.Kind )
         {
             case PocoTypeKind.Basic:
@@ -252,7 +313,9 @@ sealed class PocoJsonSchemaGenerator
         if( type == typeof( DateTime ) ) return Pattern( Patterns.DateTime );
         if( type == typeof( DateTimeOffset ) ) return Pattern( Patterns.DateTimeOffset );
         if( type == typeof( char ) ) return Pattern( Patterns.Char );
-        if( type == typeof( NormalizedCultureInfo ) ) return Typed( "string" );
+        // The name of the culture (any name: the importer resolves the best match, it never throws). An
+        // ExtendedCultureInfo is a polymorphic position: this is its value once tagged.
+        if( type == typeof( NormalizedCultureInfo ) || type == typeof( ExtendedCultureInfo ) ) return Typed( "string" );
         return NotDescribed( $"the type '{GetName( t )}'" );
 
         static JsonObject Typed( string jsonType ) => new JsonObject { ["type"] = jsonType };

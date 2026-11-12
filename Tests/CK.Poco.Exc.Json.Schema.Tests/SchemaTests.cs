@@ -74,11 +74,13 @@ public class SchemaTests
         var (defs, auto) = await RunAsync();
         await using var _ = auto;
         // Sorted by name (ordinal): a stable document.
-        defs.Select( kv => kv.Key ).ShouldBe( [ "CK.Poco.Exc.Json.Schema.Tests.SchemaTests.BigValue",
+        defs.Select( kv => kv.Key ).ShouldBe( [ "CK.Core.IPoco",
+                                                "CK.Poco.Exc.Json.Schema.Tests.SchemaTests.BigValue",
                                                 "CK.Poco.Exc.Json.Schema.Tests.SchemaTests.Color",
                                                 "CK.Poco.Exc.Json.Schema.Tests.SchemaTests.Point",
                                                 "Other",
-                                                "Sample" ] );
+                                                "Sample",
+                                                "object" ] );
         // The enums: their values; the 64-bit ones as strings.
         defs["CK.Poco.Exc.Json.Schema.Tests.SchemaTests.Color"]!.ToJsonString().ShouldBe( """{"enum":[1,2]}""" );
         defs["CK.Poco.Exc.Json.Schema.Tests.SchemaTests.BigValue"]!.ToJsonString().ShouldBe( """{"enum":["1","5000000000"]}""" );
@@ -108,8 +110,8 @@ public class SchemaTests
             .ShouldBe( $$"""{"type":"array","prefixItems":[{{_int}},{"type":["string","null"]}],"minItems":2,"items":false}""" );
         p["color"]!.ToJsonString().ShouldBe( """{"$ref":"#/$defs/CK.Poco.Exc.Json.Schema.Tests.SchemaTests.Color"}""" );
         p["data"]!["contentEncoding"]!.GetValue<string>().ShouldBe( "base64" );
-        // Not described yet: nothing but null validates (never more lenient than the importer).
-        p["anything"]!["anyOf"]![0]!["not"]!.ToJsonString().ShouldBe( "{}" );
+        // A polymorphic position (see PolymorphismTests).
+        p["anything"]!.ToJsonString().ShouldBe( """{"anyOf":[{"$ref":"#/$defs/object"},{"type":"null"}]}""" );
         defs["Sample"]!["additionalProperties"]!.GetValue<bool>().ShouldBeFalse();
     }
 
