@@ -47,6 +47,16 @@ not by the schema), never more lenient.
   name, `object`) and the abstract Pocos are `$defs`; the other polymorphic positions are inlined. These are the names
   that the importer reads after a tag (it also accepts the legacy names and a bare number, string or boolean in an
   `object` position: the schema is stricter).
-- **Not described yet:** the Globalization types (`UserMessage`, `SimpleUserMessage`, `FormattedString`, `MCString`,
-  `CodeString`) and the union types. Their schema validates nothing (`not: {}`, with a `$comment`): never more lenient
-  than the importer. A polymorphic position has no alternative for them.
+- **The Globalization types** are positional arrays: `FormattedString` `[text, culture, [placeholders]]`, `CodeString`
+  `[resName, text, culture, [placeholders]]`, `MCString` `[text, formatCulture, resName, fsText, fsCulture,
+  [placeholders]]`. `SimpleUserMessage` is `[level, text, depth]` or `[0]` (no message); `UserMessage` is a `oneOf` of
+  `[0]`, the 3-cell form (the `Simple` user message format) and the full 8-cell form `[level, depth, text,
+  formatCulture, resName, fsText, fsCulture, [placeholders]]`: they tell themselves apart by their first cell and their
+  length. The levels are `enum` [4, 8, 16] (Info, Warn, Error), the depth a byte. The `String` user message format is
+  not read by the importer: not in the schema.
+- **The one exception to the rule: the placeholders.** They are pairs `[start, length]`, ordered, not overlapping,
+  within the text (UTF-16 code units). JSON Schema can't express it (it compares neither the items of an array nor a
+  cell with another one): the schema says "non negative integers", and the constraint is stated by a `$comment` and the
+  `x-ck-constraint: "placeholders"` annotation. The importer checks it and refuses what doesn't satisfy it.
+- **Not described:** the union types (to be removed from the Poco type system). Their schema validates nothing
+  (`not: {}`, with a `$comment`); a polymorphic position has no alternative for them.

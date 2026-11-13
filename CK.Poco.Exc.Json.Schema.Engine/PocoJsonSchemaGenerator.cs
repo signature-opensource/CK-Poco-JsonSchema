@@ -13,7 +13,7 @@ namespace CK.Setup.PocoJsonSchema;
 /// <summary>
 /// Generates the JSON Schema of a type set, in the canonical form of the export: camelCase names, every field present.
 /// The rule: the schema never validates what the importer refuses (it may be stricter, never more lenient). A position
-/// that is not described yet (polymorphic, Globalization types) is a schema that nothing validates.
+/// that is not described (the union types) is a schema that nothing validates.
 /// </summary>
 sealed class PocoJsonSchemaGenerator
 {
@@ -56,7 +56,7 @@ sealed class PocoJsonSchemaGenerator
         var signature = Convert.ToHexStringLower( SHA256.HashData( bytes ) );
         if( g._notDescribedCount > 0 )
         {
-            monitor.Info( $"JSON Schema of a type set of {typeSet.NonNullableTypes.Count} types: {g._notDescribedCount} positions are not described yet (polymorphic or Globalization types)." );
+            monitor.Info( $"JSON Schema of a type set of {typeSet.NonNullableTypes.Count} types: {g._notDescribedCount} positions are not described (the union types)." );
         }
         return new PocoJsonSchema( typeSet, bytes, signature );
     }
@@ -316,7 +316,49 @@ sealed class PocoJsonSchemaGenerator
         // The name of the culture (any name: the importer resolves the best match, it never throws). An
         // ExtendedCultureInfo is a polymorphic position: this is its value once tagged.
         if( type == typeof( NormalizedCultureInfo ) || type == typeof( ExtendedCultureInfo ) ) return Typed( "string" );
+        if( type == typeof( FormattedString ) ) return Cells( Typed( "string" ), Typed( "string" ), Placeholders() );
+        if( type == typeof( CodeString ) ) return Cells( Typed( "string" ), Typed( "string" ), Typed( "string" ), Placeholders() );
+        if( type == typeof( MCString ) ) return MCStringCells();
+        if( type == typeof( SimpleUserMessage ) )
+        {
+            return new JsonObject { ["oneOf"] = new JsonArray( NoMessage(), SimpleMessage() ) };
+        }
+        if( type == typeof( UserMessage ) )
+        {
+            // The full form, or the Simple one (UserMessageFormat.Simple): they tell themselves apart by their length.
+            var full = MCStringCells();
+            full["prefixItems"]!.AsArray().Insert( 0, Integer( byte.MinValue, byte.MaxValue ) );
+            full["prefixItems"]!.AsArray().Insert( 0, Levels() );
+            full["minItems"] = 8;
+            return new JsonObject { ["oneOf"] = new JsonArray( NoMessage(), SimpleMessage(), full ) };
+        }
         return NotDescribed( $"the type '{GetName( t )}'" );
+
+        // [text, formatCulture, resName, fsText, fsCulture, [placeholders]]
+        static JsonObject MCStringCells() => Cells( Typed( "string" ), Typed( "string" ), Typed( "string" ), Typed( "string" ), Typed( "string" ), Placeholders() );
+        // The None message: [0].
+        static JsonObject NoMessage() => Cells( new JsonObject { ["const"] = 0 } );
+        // [level, text, depth]
+        static JsonObject SimpleMessage() => Cells( Levels(), Typed( "string" ), Integer( byte.MinValue, byte.MaxValue ) );
+        // Info, Warn, Error (the importer accepts any level but None in a message: the schema is stricter).
+        static JsonObject Levels() => new JsonObject { ["enum"] = new JsonArray( (int)UserMessageLevel.Info, (int)UserMessageLevel.Warn, (int)UserMessageLevel.Error ) };
+        static JsonObject Cells( params JsonObject[] cells ) => new JsonObject
+        {
+            ["type"] = "array",
+            ["prefixItems"] = new JsonArray( cells ),
+            ["minItems"] = cells.Length,
+            ["items"] = false
+        };
+        // The exception to the rule (decided): the placeholders of a FormattedString are pairs [start, length], ordered,
+        // not overlapping, within the text. JSON Schema can't express it (it compares neither the items nor another
+        // cell): the importer checks it and refuses what doesn't satisfy it.
+        static JsonObject Placeholders() => new JsonObject
+        {
+            ["type"] = "array",
+            ["items"] = Integer( 0, int.MaxValue ),
+            ["$comment"] = "Not expressible in JSON Schema, checked by the importer: [start, length] pairs, ordered, not overlapping, within the text (UTF-16 code units).",
+            ["x-ck-constraint"] = "placeholders"
+        };
 
         static JsonObject Typed( string jsonType ) => new JsonObject { ["type"] = jsonType };
         static JsonObject Integer( long min, long max ) => new JsonObject { ["type"] = "integer", ["minimum"] = min, ["maximum"] = max };
